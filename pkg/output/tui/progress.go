@@ -175,21 +175,7 @@ func (b bubbleProgressHandler) speedChange() (tea.Model, tea.Cmd) {
 }
 
 func (b bubbleProgressHandler) percentChange(event percentChange) (tea.Model, tea.Cmd) {
-	cmds := make([]tea.Cmd, 0, 1)
-	cmds = append(cmds, b.prog.SetPercent(float64(event)))
-
-	if event >= 1.0 {
-		cmds = append(cmds, b.quitSignal())
-	}
-
-	return b, tea.Batch(cmds...)
-}
-
-func (b *BubbleProgress) quitSignal() tea.Cmd {
-	// The final pause is to give the progress bar a chance to finish its
-	// animation before quitting. Otherwise, it ends abruptly, and the user
-	// might not see the progress bar at 100%.
-	return tea.Sequence(b.finalPause(), tea.Quit)
+	return b, b.prog.SetPercent(float64(event))
 }
 
 func (b bubbleProgressHandler) progressFrame(event progress.FrameMsg) (tea.Model, tea.Cmd) {
@@ -259,8 +245,12 @@ func (b *BubbleProgress) stop() {
 		return
 	}
 
-	b.tea.Send(b.quitSignal())
+	b.tea.Quit()
 	<-b.quitChan
+
+	_, _ = b.OutOrStdout().Write([]byte("\r" +
+		b.display(b.prog.ViewAs(1.0)),
+	))
 
 	b.tea = nil
 	b.quitChan = nil
